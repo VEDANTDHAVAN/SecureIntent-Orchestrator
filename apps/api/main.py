@@ -13,7 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from apps.api.auth import auth_router
-from apps.api.routes import health_router
+from apps.api.routes import health_router, email_router
+from apps.api.webhooks import webhook_router
 from db.models import ping_db
 from shared.constants import APP_NAME, APP_VERSION
 from shared.exceptions import SecureIntentError
@@ -56,6 +57,8 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(webhook_router)
+app.include_router(email_router)
 
 
 # ──────────────────────────────────────────────

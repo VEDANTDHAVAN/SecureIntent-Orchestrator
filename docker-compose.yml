@@ -1,0 +1,10 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secureintent-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./apps/api/.env

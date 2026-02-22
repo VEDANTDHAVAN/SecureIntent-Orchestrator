@@ -72,12 +72,11 @@ async def _get_google_userinfo(access_token: str) -> dict:
 
 
 def _upsert_user(userinfo: dict) -> dict:
-    """Upsert user into Supabase `users` table and return the row."""
+    """Upsert user into Supabase auth.users + profiles table."""
     supabase = get_supabase()
-    google_id = userinfo.get("sub")
     email = userinfo.get("email")
-    name = userinfo.get("name")
 
+    # 1. Check if profile already exists
     existing = (
         supabase.table("profiles")
         .select("*")
@@ -90,13 +89,34 @@ def _upsert_user(userinfo: dict) -> dict:
     if existing:
         return existing[0]
 
-    new_user = {
-        "id": str(uuid.uuid4()),
+    # 2. Create user in Supabase Auth first (satisfies FK on profiles.id)
+    try:
+        auth_response = supabase.auth.admin.create_user({
+            "email": email,
+            "email_confirm": True,   # auto-confirm since they used Google
+        })
+        auth_user_id = auth_response.user.id
+    except Exception as e:
+        # User might already exist in auth.users (e.g. signed up differently)
+        # Try to fetch them by email
+        logger.warning("Auth create failed (may already exist): %s", e)
+        users_list = supabase.auth.admin.list_users()
+        auth_user_id = None
+        for u in users_list:
+            if u.email == email:
+                auth_user_id = u.id
+                break
+        if not auth_user_id:
+            raise
+
+    # 3. Now insert profile with the real auth.users ID
+    new_profile = {
+        "id": str(auth_user_id),
         "email": email,
         "role": UserRole.USER.value,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    result = supabase.table("profiles").insert(new_user).execute()
+    result = supabase.table("profiles").insert(new_profile).execute()
     return result.data[0]
 
 

@@ -35,7 +35,7 @@ def ping_db() -> bool:
         return False
 
 
-# --- CRUD Helpers ---
+
 
 def create_email(data: dict) -> dict:
     """Save a new email record."""
