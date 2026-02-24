@@ -1,4 +1,4 @@
-from .schemas import GoalPlan
+from agents.planner.schemas import GoalPlan
 from .execution_schemas import (
     GoalExecutionResult, StepExecutionResult, StepStatus
 )

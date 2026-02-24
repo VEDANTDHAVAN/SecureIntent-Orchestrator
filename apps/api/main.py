@@ -16,8 +16,8 @@ sys.path.append(str(root_path))
 
 from agents.intent_agent.extractor import IntentExtractor
 from agents.intent_agent.schemas import Intent
-from agents.goal_engine.planner import GoalPlanner
-from agents.goal_engine.schemas import GoalPlan
+from agents.planner.planner import GoalPlanner
+from agents.planner.schemas import GoalPlan
 from agents.goal_engine.executor import GoalExecutionEngine
 from agents.goal_engine.execution_schemas import GoalExecutionResult
 
