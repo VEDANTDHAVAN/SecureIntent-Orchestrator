@@ -15,6 +15,11 @@ root_path = Path(__file__).parent.parent.parent
 sys.path.append(str(root_path))
 
 from agents.intent_agent.extractor import IntentExtractor
+from agents.intent_agent.schemas import Intent
+from agents.goal_engine.planner import GoalPlanner
+from agents.goal_engine.schemas import GoalPlan
+from agents.goal_engine.executor import GoalExecutionEngine
+from agents.goal_engine.execution_schemas import GoalExecutionResult
 
 # Validate required environment variables
 if not os.getenv("OPENAI_API_KEY"):
@@ -22,13 +27,14 @@ if not os.getenv("OPENAI_API_KEY"):
 
 app = FastAPI(
     title="SecureIntent Orchestrator API",
-    version="0.1.0",
+    version="0.2.0",
     description="Agentic Zero-Trust Email Automation System"
 )
 
-# Initialize extractor
+# Initialize components
 intent_extractor = IntentExtractor()
-
+goal_planner = GoalPlanner()
+goal_executor = GoalExecutionEngine()
 
 # -----------------------------
 # Request / Response Models
@@ -40,7 +46,9 @@ class EmailRequest(BaseModel):
 
 
 class IntentResponse(BaseModel):
-    intent: dict
+    intent: Intent
+    goal_plan: GoalPlan
+    execution_result: GoalExecutionResult | None = None
     status: str
     reason: str | None = None
 
@@ -57,20 +65,52 @@ async def health_check():
 @app.post("/extract-intent", response_model=IntentResponse)
 async def extract_intent(email: EmailRequest):
     """
-    Extract structured intent from email content.
+    Extract structured intent from email content
+    and convert it into a deterministic goal plan.
     """
 
     try:
-        result = await intent_extractor.extract(
+        raw_result = await intent_extractor.extract(
             subject=email.subject,
             body=email.body
         )
 
-        return result
+        # 🔧 FIX: Normalize to Intent model
+        if isinstance(raw_result, dict):
+            if "intent" in raw_result:
+                intent = Intent(**raw_result["intent"])
+            else:
+                intent = Intent(**raw_result)
+        else: 
+            intent = raw_result
+
+        # 2️⃣ Deterministic planning layer
+        goal_plan: GoalPlan = goal_planner.plan(intent)
+
+        # 3️⃣ Status evaluation
+        if goal_plan.goal_type.name == "NO_ACTION":
+            return IntentResponse(
+                intent=intent,
+                goal_plan=goal_plan,
+                execution_result=None,
+                status="blocked",
+                reason="Low confidence or insufficient entities"
+            )
+
+        # Execution plan 
+        execution_result = await goal_executor.execute(goal_plan)
+
+        return IntentResponse(
+            intent=intent,
+            goal_plan=goal_plan,
+            execution_result=execution_result,
+            status=execution_result.overall_status,
+            reason=None
+        )
 
     except Exception as e:
-        logger.exception("Intent extraction failed")
+        logger.exception("Intent extraction or planning pipeline failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Intent extraction failed: {str(e)}"
+            detail=f"Processing failed: {str(e)}"
         )
