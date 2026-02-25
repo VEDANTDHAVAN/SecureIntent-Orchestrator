@@ -1,0 +1,98 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SecureIntent Policy Rules
+# ──────────────────────────────────────────────────────────────────────────────
+# Each policy defines:
+#   id:          Unique identifier
+#   name:        Human-readable name
+#   description: What this policy protects against
+#   condition:   Expression evaluated against PolicyContext fields
+#   action:      allow | require_approval | block | log_only
+#   priority:    low | medium | high | critical
+#   enabled:     true | false
+#
+# Condition syntax supports:
+#   - Field comparisons: risk_score >= 80, intent_type == 'payment_request'
+#   - Logical operators: and, or, not
+#   - Membership tests: sender_domain not in trusted_domains
+#   - Boolean fields: has_attachments, is_external
+# ──────────────────────────────────────────────────────────────────────────────
+
+policies:
+  # ── Financial Protection ─────────────────────────────────────────────────
+  - id: block_auto_payment
+    name: "Never auto-pay invoices"
+    description: "All payment requests must be manually approved to prevent fraud"
+    condition: "intent_type == 'payment_request'"
+    action: require_approval
+    priority: critical
+    enabled: true
+
+  - id: block_high_amount
+    name: "Block high-value transfers"
+    description: "Block any transfer above $10,000 without approval"
+    condition: "intent_type == 'payment_request' and amount > 10000"
+    action: block
+    priority: critical
+    enabled: true
+
+  # ── External Communication ──────────────────────────────────────────────
+  - id: external_email_approval
+    name: "Require approval for external email"
+    description: "Outbound emails to untrusted domains need approval"
+    condition: "action == 'send_email' and is_external"
+    action: require_approval
+    priority: high
+    enabled: true
+
+  # ── Risk-Based Blocking ─────────────────────────────────────────────────
+  - id: block_high_risk
+    name: "Block high-risk emails"
+    description: "Emails with risk score >= 80 are automatically blocked"
+    condition: "risk_score >= 80"
+    action: block
+    priority: critical
+    enabled: true
+
+  - id: review_medium_risk
+    name: "Review medium-risk emails"
+    description: "Emails with risk score >= 50 require human review"
+    condition: "risk_score >= 50"
+    action: require_approval
+    priority: high
+    enabled: true
+
+  # ── Attachment Policies ─────────────────────────────────────────────────
+  - id: review_attachments
+    name: "Review emails with attachments"
+    description: "Emails with more than 3 attachments need review"
+    condition: "attachment_count > 3"
+    action: require_approval
+    priority: medium
+    enabled: true
+
+  # ── Calendar / Scheduling ───────────────────────────────────────────────
+  - id: approve_external_meetings
+    name: "Approve external meeting invitations"
+    description: "Meetings scheduled with external domains need approval"
+    condition: "intent_type == 'schedule_meeting' and is_external"
+    action: require_approval
+    priority: medium
+    enabled: true
+
+  # ── URL Policies ────────────────────────────────────────────────────────
+  - id: review_many_urls
+    name: "Review emails with many URLs"
+    description: "Emails with more than 5 URLs are flagged for review"
+    condition: "url_count > 5"
+    action: log_only
+    priority: low
+    enabled: true
+
+# ── Trusted Domains ──────────────────────────────────────────────────────────
+trusted_domains:
+  - "gmail.com"
+  - "outlook.com"
+  - "yahoo.com"
+  - "hotmail.com"
+  - "protonmail.com"
+  - "icloud.com"

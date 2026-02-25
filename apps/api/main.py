@@ -27,9 +27,16 @@ if not os.getenv("OPENAI_API_KEY"):
 
 app = FastAPI(
     title="SecureIntent Orchestrator API",
-    version="0.2.0",
+    version="0.3.0",
     description="Agentic Zero-Trust Email Automation System"
 )
+
+# ─── Security & Risk Router ──────────────────────────────────────────────────
+from apps.api.routes import router as security_router
+from engines.policy_guardrails.middleware import PolicyEnforcementMiddleware
+
+app.include_router(security_router)
+app.add_middleware(PolicyEnforcementMiddleware)
 
 # Initialize components
 intent_extractor = IntentExtractor()
