@@ -1,0 +1,52 @@
+rules:
+  # ── Risk-based gates ────────────────────────────────────────────────────────
+  - id: block_critical_risk
+    description: "Block emails with CRITICAL risk score immediately"
+    condition:
+      risk_level: critical
+    action: block
+
+  - id: approve_high_risk
+    description: "Block emails with HIGH risk score"
+    condition:
+      risk_level: high
+    action: block
+
+  - id: approve_medium_risk
+    description: "Require human approval for MEDIUM risk emails"
+    condition:
+      risk_level: medium
+    action: require_approval
+
+  - id: approve_spf_dkim_fail
+    description: "Require approval when both SPF and DKIM fail (impersonation signal)"
+    condition:
+      spf: fail
+      dkim: fail
+    action: require_approval
+
+  # ── Intent-based gates ──────────────────────────────────────────────────────
+  - id: approve_external_actions
+    description: "All actions requiring external services need approval"
+    condition:
+      requires_external_action: true
+    action: require_approval
+
+  - id: approve_send_email
+    description: "Any email-sending action must be human-approved"
+    condition:
+      goal_type: SEND_EMAIL_REPLY
+    action: require_approval
+
+  - id: block_low_confidence
+    description: "Block actions when intent confidence is too low to be reliable"
+    condition:
+      confidence_lt: 0.40
+    action: block
+
+  # ── Safe auto-execute ───────────────────────────────────────────────────────
+  - id: allow_read_only
+    description: "Read-only intents (information lookup, no_action) are safe to auto-process"
+    condition:
+      goal_type: NO_ACTION
+    action: allow
