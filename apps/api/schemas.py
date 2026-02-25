@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Literal
 
 
 class UserOut(BaseModel):
@@ -100,3 +100,53 @@ class ActionLogCreate(ActionLogBase):
 class ActionLogOut(ActionLogBase):
     id: str
     created_at: datetime
+
+
+# ── Agent pipeline schemas ──────────────────────────────────────
+
+class ExecutionStepOut(BaseModel):
+    step_id: int
+    description: str
+    requires_human_approval: bool
+
+
+class StepResultOut(BaseModel):
+    step_id: int
+    status: str
+    message: str
+
+
+class GoalPlanOut(BaseModel):
+    goal_type: str
+    priority: int
+    steps: List[ExecutionStepOut]
+
+
+class GoalExecutionOut(BaseModel):
+    goal_type: str
+    overall_status: str
+    step_results: List[StepResultOut]
+
+
+class ProcessEmailResponse(BaseModel):
+    """Response from POST /emails/{email_id}/process"""
+    email_id: str
+    intent_id: str
+    plan_id: str
+    intent_type: str
+    confidence: float
+    goal_type: str
+    plan_status: str
+    execution: Optional[GoalExecutionOut] = None
+    status: Literal["processed", "blocked"]
+    reason: Optional[str] = None
+
+
+class ApprovalResponse(BaseModel):
+    """Response from approve / reject / execute endpoints"""
+    plan_id: str
+    status: str
+    message: str
+    steps_total: Optional[int] = None
+    steps_succeeded: Optional[int] = None
+    execution: Optional[GoalExecutionOut] = None

@@ -1,0 +1,38 @@
+{
+    "manifest_version": 3,
+    "name": "SecureIntent Orchestrator",
+    "version": "1.0.0",
+    "description": "Zero-trust email intent extraction and automated action orchestration",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "scripting",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://mail.google.com/*",
+        "http://localhost:8000/*",
+        "https://*.secureintent.app/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://mail.google.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "styles.css"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_title": "SecureIntent"
+    }
+}

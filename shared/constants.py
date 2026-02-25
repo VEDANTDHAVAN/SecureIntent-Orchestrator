@@ -4,7 +4,7 @@ APP_NAME = "SecureIntent Orchestrator"
 APP_VERSION = "0.1.0"
 
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_MINUTES = 60
+JWT_EXPIRE_MINUTES = 10080
 
 
 class UserRole(str, Enum):

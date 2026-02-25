@@ -7,4 +7,23 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ./apps/api/.env
+      - .env
+    # Volume mounts: changes to source files are reflected immediately
+    # without rebuilding the image (hot-reload via uvicorn --reload)
+    volumes:
+      - ./apps:/app/apps
+      - ./shared:/app/shared
+      - ./db:/app/db
+      - ./agents:/app/agents
+      - ./engines:/app/engines
+      - ./sandbox:/app/sandbox
+      - ./tools:/app/tools
+    # Restart automatically if it crashes during dev
+    restart: unless-stopped
+    # Healthcheck — polls /health every 30s
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

@@ -5,6 +5,11 @@ from shared.logger import logger
 
 _client: Client | None = None
 
+# ── Shared in-memory plan cache ────────────────────────────────────────────────
+# Used as a fallback when Supabase writes fail or haven't completed yet.
+# Both main.py and agent_routes.py should read/write through get_plan_cached().
+PLAN_CACHE: dict[str, dict] = {}
+
 
 def get_supabase() -> Client:
     """Return a singleton Supabase client, initialised from env vars."""
@@ -80,10 +85,87 @@ def get_plan_by_intent(intent_id: str) -> dict | None:
 
 
 def update_plan_status(plan_id: str, status: str) -> dict:
-    """Update plan status (pending, approved, rejected, executed)."""
+    """Update plan status (pending, approved, rejected, executing, executed, failed)."""
+    # Sync cache first
+    if plan_id in PLAN_CACHE:
+        PLAN_CACHE[plan_id]["status"] = status
+    
     client = get_supabase()
     result = client.table("plans").update({"status": status}).eq("id", plan_id).execute()
+    return result.data[0] if result.data else {}
+
+
+def save_plan(data: dict) -> dict:
+    """
+    Upsert a plan record with full metadata.
+    Expects: user_email, goal_type, risk_level, risk_score, policy_decision,
+             subject, sender, intent_json, plan_json  (all serializable dicts/primitives).
+    Returns the saved row including id.
+    """
+    client = get_supabase()
+    result = client.table("plans").insert(data).execute()
     return result.data[0]
+
+
+def get_plan(plan_id: str) -> dict | None:
+    """Fetch a full plan row by UUID."""
+    client = get_supabase()
+    result = client.table("plans").select("*").eq("id", plan_id).limit(1).execute()
+    return result.data[0] if result.data else None
+
+
+def get_plan_cached(plan_id: str) -> dict | None:
+    """
+    Fetch a plan — checks in-memory PLAN_CACHE first, then Supabase.
+    Use this everywhere instead of get_plan() so plans survive Supabase write failures.
+    """
+    if plan_id in PLAN_CACHE:
+        return PLAN_CACHE[plan_id]
+    row = get_plan(plan_id)
+    if row:
+        PLAN_CACHE[plan_id] = row   # warm the cache for future reads
+    return row
+
+
+def update_plan(plan_id: str, updates: dict) -> dict:
+    """Partial-update a plan row."""
+    # Sync cache first
+    if plan_id in PLAN_CACHE:
+        PLAN_CACHE[plan_id].update(updates)
+    
+    client = get_supabase()
+    result = client.table("plans").update(updates).eq("id", plan_id).execute()
+    return result.data[0] if result.data else {}
+
+
+def get_pending_plans(user_email: str) -> list[dict]:
+    """Return all pending plans for a user, newest first."""
+    client = get_supabase()
+    result = (
+        client.table("plans")
+        .select("id, goal_type, risk_level, risk_score, subject, sender, created_at, policy_decision")
+        .eq("user_email", user_email)
+        .eq("status", "pending")
+        .order("created_at", desc=True)
+        .limit(50)
+        .execute()
+    )
+    return result.data
+
+
+def get_history_plans(user_email: str, limit: int = 20) -> list[dict]:
+    """Return recent executed/rejected plans for the dashboard history view."""
+    client = get_supabase()
+    result = (
+        client.table("plans")
+        .select("id, goal_type, risk_level, risk_score, status, subject, sender, created_at, reject_reason, execution_log, plan_json")
+        .eq("user_email", user_email)
+        .in_("status", ["executed", "rejected", "failed"])
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return result.data
 
 
 def create_risk_score(data: dict) -> dict:
@@ -105,3 +187,40 @@ def log_action(data: dict) -> dict:
     client = get_supabase()
     result = client.table("action_logs").insert(data).execute()
     return result.data[0]
+
+
+def save_gmail_tokens(user_id: str, refresh_token: str, history_id: str | None = None) -> dict:
+    """Upsert Gmail OAuth refresh token (and optionally last history ID) on a profile.
+
+    Requires profiles table to have:
+      google_refresh_token text
+      last_history_id      text
+    """
+    client = get_supabase()
+    payload: dict = {"google_refresh_token": refresh_token}
+    if history_id is not None:
+        payload["last_history_id"] = str(history_id)
+    result = (
+        client.table("profiles")
+        .update(payload)
+        .eq("id", user_id)
+        .execute()
+    )
+    return result.data[0] if result.data else {}
+
+
+def get_gmail_token(email_address: str) -> dict | None:
+    """Fetch google_refresh_token and last_history_id for a user by email.
+
+    Returns a dict with keys 'id', 'google_refresh_token', 'last_history_id',
+    or None if the user is not found.
+    """
+    client = get_supabase()
+    result = (
+        client.table("profiles")
+        .select("id, google_refresh_token, last_history_id")
+        .eq("email", email_address)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None

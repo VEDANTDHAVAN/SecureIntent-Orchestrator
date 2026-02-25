@@ -9,9 +9,5 @@
 **/*.pyo
 **/*.pyd
 **/db/migrations
-**/sandbox
 **/infra
 **/apps/extension
-**/tools
-**/agents
-**/engines

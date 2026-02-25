@@ -1,0 +1,27 @@
+# Known bad domains / phishing infrastructure
+# One domain per line. Lines starting with # are comments.
+# This file is loaded at startup by url_scanner.py
+
+# URL shorteners commonly abused in phishing
+bit.ly
+tinyurl.com
+ow.ly
+is.gd
+cutt.ly
+rebrand.ly
+
+# Generic phishing / scam patterns
+free-gift-claim.com
+urgent-payment.net
+verify-account-now.com
+secure-login-help.com
+account-suspended-alert.com
+update-billing-info.net
+confirm-identity-now.com
+wire-transfer-request.com
+payroll-update-required.com
+invoice-pending-action.com
+
+# Known malware distribution
+malware.com
+phishing-site.net
