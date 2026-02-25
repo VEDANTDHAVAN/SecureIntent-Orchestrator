@@ -1,4 +1,5 @@
 import os
+<<<<<<< HEAD
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -39,7 +40,6 @@ app = FastAPI(
     description="Secure AI orchestration layer for intent-driven email actions.",
     lifespan=lifespan,
 )
-
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
