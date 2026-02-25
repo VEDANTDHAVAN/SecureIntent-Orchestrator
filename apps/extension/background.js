@@ -33,6 +33,40 @@ async function saveSettings(updates) {
     return new Promise((resolve) => chrome.storage.local.set(updates, resolve));
 }
 
+async function upsertExecutionHistory(entry) {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(["executionHistory"], (data) => {
+            const history = Array.isArray(data.executionHistory) ? data.executionHistory : [];
+            const nowIso = new Date().toISOString();
+            const normalized = {
+                timestamp: entry.timestamp || nowIso,
+                plan_id: entry.plan_id,
+                status: entry.status,
+                steps_total: entry.steps_total,
+                steps_succeeded: entry.steps_succeeded,
+                subject: entry.subject,
+                goal_type: entry.goal_type,
+                risk_level: entry.risk_level,
+            };
+
+            const idx = history.findIndex((h) => h && h.plan_id === normalized.plan_id);
+            if (idx >= 0) {
+                // Merge without overwriting existing fields with undefined
+                const next = { ...history[idx] };
+                Object.entries(normalized).forEach(([k, v]) => {
+                    if (v !== undefined && v !== null && v !== "") next[k] = v;
+                });
+                history[idx] = next;
+            } else {
+                history.unshift(normalized);
+            }
+
+            const trimmed = history.slice(0, 20);
+            chrome.storage.local.set({ executionHistory: trimmed }, () => resolve(trimmed));
+        });
+    });
+}
+
 // ── API helpers ────────────────────────────────────────────────────────────────
 
 async function apiRequest(path, options = {}) {
@@ -176,30 +210,66 @@ async function handleMessage(message) {
                 risk: result.risk_score?.level,
                 plan_id: result.plan_id,
             });
+            // Seed local execution history with risk metadata so popup can display it
+            if (result?.plan_id) {
+                await upsertExecutionHistory({
+                    plan_id: result.plan_id,
+                    status: "aborted",
+                    subject: message.subject,
+                    goal_type: result.goal_plan?.goal_type,
+                    risk_level: result.risk_score?.level,
+                });
+            }
             return result;
         }
 
         case "APPROVE_PLAN": {
             const result = await apiRequest(`/plans/${message.planId}/approve`, { method: "POST" });
             await logActivity({ type: "plan_approved", plan_id: message.planId });
+            await upsertExecutionHistory({
+                plan_id: message.planId,
+                status: "approved",
+            });
             return result;
         }
 
         case "REJECT_PLAN": {
             const result = await apiRequest(`/plans/${message.planId}/reject`, { method: "POST" });
             await logActivity({ type: "plan_rejected", plan_id: message.planId });
+            await upsertExecutionHistory({
+                plan_id: message.planId,
+                status: "rejected",
+            });
             return result;
         }
 
         case "APPROVE_AND_EXECUTE": {
             const result = await apiRequest(`/plans/${message.planId}/approve-and-execute`, { method: "POST" });
             await logActivity({ type: "plan_approved_and_executed", plan_id: message.planId });
+            const normalizedStatus = (
+                result.status === "failed" && (result.steps_succeeded || 0) > 0
+            ) ? "executed" : (result.status || "executed");
+            await upsertExecutionHistory({
+                plan_id: message.planId,
+                status: normalizedStatus,
+                steps_total: result.steps_total,
+                steps_succeeded: result.steps_succeeded,
+            });
             return result;
         }
 
         case "EXECUTE_PLAN": {
             const result = await apiRequest(`/plans/${message.planId}/execute`, { method: "POST" });
             await logActivity({ type: "plan_executed", plan_id: message.planId });
+            const normalizedStatus = (
+                result.status === "failed" && (result.steps_succeeded || 0) > 0
+            ) ? "executed" : (result.status || "executed");
+            await upsertExecutionHistory({
+                plan_id: message.planId,
+                status: normalizedStatus,
+                steps_total: result.steps_total,
+                steps_succeeded: result.steps_succeeded,
+            });
             return result;
         }
 
@@ -208,6 +278,12 @@ async function handleMessage(message) {
                 `/plans/${message.planId}/execute?dry_run=true`,
                 { method: "POST" }
             );
+            return result;
+        }
+
+        case "GENERATE_REPORT": {
+            const result = await apiRequest(`/plans/${message.planId}/report`, { method: "GET" });
+            await logActivity({ type: "report_generated", plan_id: message.planId });
             return result;
         }
 

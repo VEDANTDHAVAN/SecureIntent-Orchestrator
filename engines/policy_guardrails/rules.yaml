@@ -7,9 +7,15 @@ rules:
     action: block
 
   - id: approve_high_risk
-    description: "Require human approval for HIGH risk emails"
+    description: "Block emails with HIGH risk score"
     condition:
       risk_level: high
+    action: block
+
+  - id: approve_medium_risk
+    description: "Require human approval for MEDIUM risk emails"
+    condition:
+      risk_level: medium
     action: require_approval
 
   - id: approve_spf_dkim_fail

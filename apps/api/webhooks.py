@@ -241,7 +241,7 @@ async def _run_agent_pipeline(
         spf_dkim = extract_auth_results(headers or {})
         urls = extract_urls(body)
         url_scan = scan_urls(urls)
-        risk_score = calculate_risk(spf_dkim, url_scan, sender=sender, subject=subject)
+        risk_score = calculate_risk(spf_dkim, url_scan, sender=sender, subject=subject, body=body)
 
         # Persist risk score
         create_risk_score(risk_score.to_db_dict(email_id))

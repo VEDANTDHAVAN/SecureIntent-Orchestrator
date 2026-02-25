@@ -10,10 +10,12 @@ Flow:
   4. POST /plans/{plan_id}/approve    → mark plan approved (approver/admin only)
   5. POST /plans/{plan_id}/reject     → mark plan rejected (approver/admin only)
   6. POST /plans/{plan_id}/execute    → run the goal executor on an approved plan
+  7. GET  /plans/{plan_id}/docx       → download plan and execution log as .docx
 """
 
 import json
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from agents.intent_agent.extractor import IntentExtractor
 from agents.intent_agent.schemas import Intent
@@ -230,9 +232,33 @@ async def get_pending_plans_endpoint(current_user: UserOut = Depends(get_current
 @plan_router.get("/history", tags=["Plans"])
 async def get_plan_history_endpoint(current_user: UserOut = Depends(get_current_user), limit: int = 20):
     """Return recent execution history for the user."""
-    from db.models import get_history_plans
+    from db.models import PLAN_CACHE, get_history_plans
+
+    # Primary source: Supabase
     plans = get_history_plans(current_user.email, limit=limit)
-    return {"plans": plans}
+    seen_ids = {p.get("id") for p in plans if p.get("id")}
+
+    # Fallback source: in-memory PLAN_CACHE
+    # This covers cases where DB writes are delayed/blocked (e.g. RLS) but the API
+    # has already executed and updated the cached plan.
+    cached = []
+    for pid, row in PLAN_CACHE.items():
+        if pid in seen_ids:
+            continue
+        if row.get("user_email") != current_user.email:
+            continue
+        if row.get("status") not in ("approved", "executed", "rejected", "failed"):
+            continue
+        cached.append(row)
+
+    merged = plans + cached
+
+    def _sort_key(r: dict):
+        # created_at in Supabase is usually ISO; cache may also be ISO.
+        return r.get("created_at") or ""
+
+    merged.sort(key=_sort_key, reverse=True)
+    return {"plans": merged[:limit]}
 
 
 # ──────────────────────────────────────────────
@@ -397,19 +423,22 @@ async def execute_plan(
             final_status = plan_row["status"]
         else:
             final_status = "executed" if (success_count == len(results)) else "failed"
-            # Persist both status and execution_log to the database
+            # Always update cache so UI can reflect immediately even if DB write fails.
             try:
-                # Re-fetch latest plan row to ensure we have any updates
-                plan_to_save = plan_row.copy()
-                plan_to_save["status"] = final_status
-                plan_to_save["execution_log"] = results
-                
+                from db.models import PLAN_CACHE
+                PLAN_CACHE.setdefault(plan_id, plan_row)["status"] = final_status
+                PLAN_CACHE.setdefault(plan_id, plan_row)["execution_log"] = results
+                PLAN_CACHE.setdefault(plan_id, plan_row)["user_email"] = current_user.email
+            except Exception:
+                pass
+
+            try:
                 update_plan(plan_id, {
                     "status": final_status,
-                    "execution_log": results,          # raw dispatcher results
+                    "execution_log": results,
+                    "user_email": current_user.email,
                 })
             except Exception as db_exc:
-                # Non-fatal — log already in PLAN_CACHE from update_plan
                 logger.warning("DB persist of execution_log failed: %s", db_exc)
 
         log_action({
@@ -551,3 +580,68 @@ async def generate_plan_report(
     except Exception as exc:
         logger.error("Report generation failed for plan %s: %s", plan_id, exc)
         raise HTTPException(status_code=502, detail=f"Failed to create Google Doc: {exc}")
+
+
+@plan_router.get(
+    "/{plan_id}/docx",
+    summary="Download a plan as a .docx file",
+)
+async def download_plan_docx(
+    plan_id: str,
+    current_user: UserOut = Depends(get_current_user),
+):
+    import io
+    from datetime import datetime
+
+    from db.models import get_plan_cached
+
+    plan_row = get_plan_cached(plan_id)
+    if not plan_row:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    try:
+        from docx import Document
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"python-docx not installed: {exc}")
+
+    doc = Document()
+    doc.add_heading("SecureIntent Plan", level=1)
+    doc.add_paragraph(f"Plan ID: {plan_row.get('id', plan_id)}")
+    doc.add_paragraph(f"Status: {plan_row.get('status', '')}")
+    doc.add_paragraph(f"Goal Type: {plan_row.get('goal_type', '')}")
+    doc.add_paragraph(f"User: {plan_row.get('user_email', '')}")
+    doc.add_paragraph(f"Subject: {plan_row.get('subject', '')}")
+    doc.add_paragraph(f"Sender: {plan_row.get('sender', '')}")
+    doc.add_paragraph(f"Created At: {plan_row.get('created_at', '')}")
+
+    doc.add_heading("Intent", level=2)
+    intent_json = plan_row.get("intent_json") or {}
+    doc.add_paragraph(json.dumps(intent_json, indent=2, default=str))
+
+    doc.add_heading("Plan", level=2)
+    plan_json = plan_row.get("plan_json") or {}
+    steps = plan_json.get("steps") or []
+    if steps:
+        for idx, step in enumerate(steps, start=1):
+            action = step.get("action", "")
+            desc = step.get("description", "")
+            doc.add_paragraph(f"{idx}. {action} — {desc}")
+    else:
+        doc.add_paragraph(json.dumps(plan_json, indent=2, default=str))
+
+    doc.add_heading("Execution Log", level=2)
+    execution_log = plan_row.get("execution_log") or []
+    doc.add_paragraph(json.dumps(execution_log, indent=2, default=str))
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    filename = f"secureintent-plan-{plan_id}-{ts}.docx"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

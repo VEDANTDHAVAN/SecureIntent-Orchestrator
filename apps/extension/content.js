@@ -497,9 +497,37 @@
             if (r.error) throw new Error(r.error);
             const succeeded = r.steps_succeeded ?? r.steps_total;
             const total = r.steps_total ?? 0;
-            replaceActions(container, `<div class="si-success">✅ Executed — ${succeeded}/${total} steps succeeded</div>`);
+            replaceActions(container, `
+              <div class="si-success">✅ Executed — ${succeeded}/${total} steps succeeded</div>
+              <div class="si-report-row">
+                <button class="si-btn-report" data-plan-id="${planId}">📄 Download Report (Google Docs)</button>
+              </div>
+            `);
+            container.querySelector(".si-btn-report")?.addEventListener("click", () => handleReport(planId, container));
         } catch (e) {
             replaceActions(container, `<div class="si-error">❌ ${escapeHtml(e.message)}</div>`);
+        }
+    }
+
+    async function handleReport(planId, container) {
+        const btn = container.querySelector(".si-btn-report");
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "⏳ Generating report…";
+        }
+
+        try {
+            const r = await safeSend({ type: "GENERATE_REPORT", planId });
+            if (r?.error) throw new Error(r.error);
+            if (!r?.doc_url) throw new Error("No doc URL returned");
+            window.open(r.doc_url, "_blank", "noopener,noreferrer");
+        } catch (e) {
+            replaceActions(container, `<div class="si-error">❌ ${escapeHtml(e.message)}</div>`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "📄 Download Report (Google Docs)";
+            }
         }
     }
 

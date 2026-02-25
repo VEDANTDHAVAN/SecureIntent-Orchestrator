@@ -16,8 +16,8 @@
     right: 0;
     width: 340px;
     max-height: calc(100vh - 80px);
-    background: #0f1117;
-    border-left: 2px solid #2d3748;
+    background: #0d1a0f;
+    border-left: 2px solid #1f3d28;
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
@@ -26,7 +26,7 @@
     flex-direction: column;
     font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
     font-size: 13px;
-    color: #e2e8f0;
+    color: #d4edda;
     overflow: hidden;
     animation: si-slide-in 0.25s ease-out;
 }
@@ -49,22 +49,22 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: linear-gradient(135deg, #1a1f2e, #0f1117);
-    border-bottom: 1px solid #2d3748;
+    background: linear-gradient(135deg, #132017, #0d1a0f);
+    border-bottom: 1px solid #1f3d28;
     flex-shrink: 0;
 }
 
 .si-panel-title {
     font-size: 14px;
     font-weight: 700;
-    color: #7c8cf8;
+    color: #4ade80;
     letter-spacing: 0.3px;
 }
 
 .si-close-btn {
     background: none;
     border: none;
-    color: #718096;
+    color: #5a8c65;
     cursor: pointer;
     font-size: 16px;
     padding: 0 4px;
@@ -72,7 +72,7 @@
 }
 
 .si-close-btn:hover {
-    color: #e2e8f0;
+    color: #d4edda;
 }
 
 /* ── Panel Body (scrollable) ────────────────────────────────── */
@@ -88,7 +88,7 @@
 .si-section {
     margin-bottom: 14px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #1a2033;
+    border-bottom: 1px solid #132017;
 }
 
 .si-section:last-child {
@@ -105,7 +105,7 @@
 .si-label {
     font-size: 11px;
     font-weight: 600;
-    color: #718096;
+    color: #5a8c65;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     min-width: 70px;
@@ -113,13 +113,13 @@
 
 .si-value {
     font-size: 13px;
-    color: #e2e8f0;
+    color: #d4edda;
     font-weight: 500;
 }
 
 .si-risk-score {
     font-size: 11px;
-    color: #718096;
+    color: #5a8c65;
     margin-left: auto;
 }
 
@@ -134,29 +134,29 @@
 }
 
 .si-badge-low {
-    background: #1a3a2a;
-    color: #48bb78;
+    background: #0d2a15;
+    color: #4ade80;
 }
 
 .si-badge-medium {
-    background: #3a2e10;
-    color: #ecc94b;
+    background: #2d2000;
+    color: #fbbf24;
 }
 
 .si-badge-high {
-    background: #3a1e1e;
-    color: #fc8181;
+    background: #2d0f0f;
+    color: #f87171;
 }
 
 .si-badge-critical {
-    background: #2d0a0a;
+    background: #1a0000;
     color: #ff4d4d;
     animation: si-pulse 1.5s infinite;
 }
 
 .si-badge-unknown {
-    background: #1e1e2e;
-    color: #a0aec0;
+    background: #132017;
+    color: #7aba88;
 }
 
 @keyframes si-pulse {
@@ -176,7 +176,7 @@
     margin: 6px 0 0 0;
     padding-left: 16px;
     font-size: 11px;
-    color: #a0aec0;
+    color: #7aba88;
     line-height: 1.6;
 }
 
@@ -190,17 +190,17 @@
 }
 
 .si-policy-allow {
-    background: #1a3a2a;
-    color: #48bb78;
+    background: #0d2a15;
+    color: #4ade80;
 }
 
 .si-policy-approval {
-    background: #3a2e10;
-    color: #ecc94b;
+    background: #2d2000;
+    color: #fbbf24;
 }
 
 .si-policy-block {
-    background: #2d0a0a;
+    background: #1a0000;
     color: #ff4d4d;
 }
 
@@ -216,15 +216,15 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #1a1f2e;
+    background: #132017;
     border-radius: 8px;
     padding: 8px 10px;
     font-size: 12px;
 }
 
 .si-step-num {
-    background: #2d3748;
-    color: #a0aec0;
+    background: #1f3d28;
+    color: #7aba88;
     border-radius: 50%;
     width: 20px;
     height: 20px;
@@ -237,14 +237,14 @@
 }
 
 .si-step-action {
-    color: #e2e8f0;
+    color: #d4edda;
     flex: 1;
 }
 
 .si-step-badge {
     font-size: 10px;
-    color: #ecc94b;
-    background: #3a2e10;
+    color: #fbbf24;
+    background: #2d2000;
     padding: 1px 6px;
     border-radius: 6px;
 }
@@ -254,7 +254,7 @@
     display: flex;
     gap: 8px;
     padding: 12px 16px;
-    border-top: 1px solid #1a2033;
+    border-top: 1px solid #132017;
     flex-shrink: 0;
 }
 
@@ -279,23 +279,23 @@
 }
 
 .si-btn-approve {
-    background: linear-gradient(135deg, #38a169, #48bb78);
+    background: linear-gradient(135deg, #16a34a, #4ade80);
     color: white;
 }
 
 .si-btn-block {
-    background: linear-gradient(135deg, #c53030, #fc8181);
+    background: linear-gradient(135deg, #b91c1c, #f87171);
     color: white;
 }
 
 .si-btn-dryrun {
-    background: #2d3748;
-    color: #a0aec0;
+    background: #1f3d28;
+    color: #7aba88;
 }
 
-/* Calendar CTA — wide indigo button */
+/* Calendar CTA — wide green button */
 .si-btn-calendar {
-    background: linear-gradient(135deg, #5a3da0, #7c8cf8);
+    background: linear-gradient(135deg, #15803d, #4ade80);
     color: white;
     font-size: 12px;
     font-weight: 700;
@@ -322,10 +322,10 @@
     gap: 6px;
     font-size: 12px;
     font-weight: 600;
-    color: #48bb78;
+    color: #4ade80;
     text-decoration: none;
-    background: rgba(72, 187, 120, 0.08);
-    border: 1px solid rgba(72, 187, 120, 0.25);
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.25);
     border-radius: 8px;
     padding: 9px 14px;
     margin-top: 8px;
@@ -333,8 +333,8 @@
 }
 
 .si-cal-link:hover {
-    background: rgba(72, 187, 120, 0.15);
-    color: #68d391;
+    background: rgba(74, 222, 128, 0.15);
+    color: #86efac;
 }
 
 /* ── Dry Run ────────────────────────────────────────────────── */
@@ -344,21 +344,21 @@
 
 .si-dry-header {
     font-weight: 700;
-    color: #a0aec0;
+    color: #7aba88;
     margin-bottom: 6px;
     font-size: 12px;
 }
 
 .si-dry-summary {
     font-size: 11px;
-    color: #718096;
+    color: #5a8c65;
     margin-bottom: 8px;
 }
 
 .si-dry-step {
     font-size: 11px;
-    color: #a0aec0;
-    background: #1a1f2e;
+    color: #7aba88;
+    background: #132017;
     padding: 6px 10px;
     border-radius: 6px;
     margin-bottom: 4px;
@@ -372,7 +372,7 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    color: #718096;
+    color: #5a8c65;
     font-size: 13px;
     min-height: 80px;
 }
@@ -380,8 +380,8 @@
 .si-spinner {
     width: 24px;
     height: 24px;
-    border: 3px solid #2d3748;
-    border-top-color: #7c8cf8;
+    border: 3px solid #1f3d28;
+    border-top-color: #4ade80;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -393,28 +393,56 @@
 }
 
 .si-error {
-    color: #fc8181;
+    color: #f87171;
     font-size: 13px;
     padding: 14px 16px;
 }
 
 .si-success {
-    color: #48bb78;
+    color: #4ade80;
     font-size: 13px;
     padding: 8px 0;
 }
 
+.si-report-row {
+    padding: 0 16px 12px 16px;
+}
+
+.si-btn-report {
+    width: 100%;
+    padding: 9px 12px;
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    color: #4ade80;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, opacity 0.2s;
+}
+
+.si-btn-report:hover {
+    background: rgba(74, 222, 128, 0.18);
+    transform: translateY(-1px);
+}
+
+.si-btn-report:disabled {
+    opacity: 0.6;
+    cursor: default;
+    transform: none;
+}
+
 .si-blocked {
-    color: #fc8181;
+    color: #f87171;
     font-size: 13px;
     padding: 8px 0;
 }
 
 .si-auto-note {
     font-size: 11px;
-    color: #718096;
+    color: #5a8c65;
     padding: 8px 16px;
-    border-top: 1px solid #1a2033;
+    border-top: 1px solid #132017;
 }
 
 /* ── Toolbar Button ─────────────────────────────────────────── */
@@ -422,7 +450,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #16a34a, #4ade80);
     color: white;
     border-radius: 20px;
     padding: 5px 12px;

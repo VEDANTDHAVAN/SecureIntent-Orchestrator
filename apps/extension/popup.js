@@ -136,7 +136,33 @@ async function loadDashboard(settings) {
         }
     } catch { /* pending fetch failed — non-fatal */ }
 
-    // Load history
+    // Load history (prefer local extension storage for immediate updates)
+    try {
+        const localHistory = await new Promise((resolve) => {
+            chrome.storage.local.get(["executionHistory"], (data) => {
+                resolve(Array.isArray(data.executionHistory) ? data.executionHistory : []);
+            });
+        });
+
+        if (localHistory.length) {
+            const mapped = localHistory.map((h) => ({
+                id: h.plan_id,
+                status: h.status,
+                subject: h.subject,
+                goal_type: h.goal_type,
+                risk_level: h.risk_level,
+                created_at: h.timestamp,
+                steps_total: h.steps_total,
+                steps_succeeded: h.steps_succeeded,
+            }));
+            renderHistory(mapped);
+            return;
+        }
+    } catch {
+        // ignore and fall back to API
+    }
+
+    // Fallback: backend history
     try {
         const resp = await fetch(`${apiUrl}/plans/history?limit=10`, { headers });
         if (resp.ok) {
@@ -149,6 +175,25 @@ async function loadDashboard(settings) {
         renderHistory([]);
     }
 }
+
+// Live updates for popup when executionHistory changes
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (!changes.executionHistory) return;
+    const newVal = changes.executionHistory.newValue;
+    if (!Array.isArray(newVal)) return;
+    const mapped = newVal.map((h) => ({
+        id: h.plan_id,
+        status: h.status,
+        subject: h.subject,
+        goal_type: h.goal_type,
+        risk_level: h.risk_level,
+        created_at: h.timestamp,
+        steps_total: h.steps_total,
+        steps_succeeded: h.steps_succeeded,
+    }));
+    renderHistory(mapped);
+});
 
 function renderHistory(plans) {
     const container = $("history-container");
@@ -176,6 +221,8 @@ function renderHistory(plans) {
     }
 
     const statusIcon = {
+        aborted: "⛔",
+        approved: "🕒",
         executed: "✅",
         rejected: "🚫",
         failed: "⚠️",
@@ -189,9 +236,12 @@ function renderHistory(plans) {
             : "";
         const goal = esc((p.goal_type || "").replace(/_/g, " ").toLowerCase());
         const cls = p.status || "";
-        const showReport = (p.status === "executed" || p.status === "failed");
-        const reportBtn = showReport
-            ? `<button class="btn-report" data-plan-id="${esc(p.id)}" title="Download Google Doc report">📄</button>`
+        const showDownloads = (p.status === "approved" || p.status === "executed" || p.status === "failed");
+        const docxBtn = showDownloads
+            ? `<button class="btn-report" data-plan-id="${esc(p.id)}" title="Download plan as .docx">⬇️</button>`
+            : "";
+        const gdocBtn = (p.status === "executed" || p.status === "failed")
+            ? `<button class="btn-gdoc" data-plan-id="${esc(p.id)}" title="Open Google Docs report">📄</button>`
             : "";
         return `
           <div class="history-item">
@@ -201,15 +251,19 @@ function renderHistory(plans) {
               <div class="history-meta">${goal} · ${when}</div>
             </div>
             <span class="history-status ${cls}">${p.status || ""}</span>
-            ${reportBtn}
+            ${docxBtn}
+            ${gdocBtn}
           </div>`;
     }).join("");
 
     container.innerHTML = `<div class="history-list">${items}</div>`;
 
-    // Wire report buttons
+    // Wire buttons
     container.querySelectorAll(".btn-report").forEach(btn => {
-        btn.addEventListener("click", () => downloadReport(btn));
+        btn.addEventListener("click", () => downloadDocx(btn));
+    });
+    container.querySelectorAll(".btn-gdoc").forEach(btn => {
+        btn.addEventListener("click", () => openGoogleDoc(btn));
     });
 }
 
@@ -219,9 +273,45 @@ function esc(str) {
     return d.innerHTML;
 }
 
-// ── Report download ────────────────────────────────────────────────────────────
+// ── Downloads ─────────────────────────────────────────────────────────────────
 
-async function downloadReport(btn) {
+async function downloadDocx(btn) {
+    const planId = btn.dataset.planId;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = "⏳";
+
+    try {
+        const settings = await sendMsg({ type: "GET_SETTINGS" });
+        const apiUrl = settings.apiUrl || "http://localhost:8000";
+        const token = settings.jwtToken;
+
+        const resp = await fetch(`${apiUrl}/plans/${planId}/docx`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.detail || `API error ${resp.status}`);
+        }
+
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `secureintent-plan-${planId}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("Download failed: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+    }
+}
+
+async function openGoogleDoc(btn) {
     const planId = btn.dataset.planId;
     btn.disabled = true;
     const orig = btn.textContent;
@@ -246,7 +336,7 @@ async function downloadReport(btn) {
             throw new Error("No doc URL returned from server");
         }
     } catch (e) {
-        alert("Report failed: " + e.message);
+        alert("Google Doc failed: " + e.message);
     } finally {
         btn.disabled = false;
         btn.textContent = orig;
@@ -302,6 +392,13 @@ $("btn-save-url")?.addEventListener("click", () => {
 $("btn-logout")?.addEventListener("click", async () => {
     await sendMsg({ type: "LOGOUT" });
     showScreen("screen-login");
+});
+
+$("btn-clear-history")?.addEventListener("click", async () => {
+    const ok = confirm("Clear execution history? This cannot be undone.");
+    if (!ok) return;
+    await chrome.storage.local.set({ executionHistory: [] });
+    renderHistory([]);
 });
 
 // ── Listen for background → popup LOGIN_SUCCESS notification ──────────────────

@@ -142,7 +142,8 @@ async def analyze_email(
     risk = calculate_risk(
         spf_dkim, url_scan,
         sender=req.sender,
-        subject=req.subject
+        subject=req.subject,
+        body=req.body,
     )
 
     risk_payload = {

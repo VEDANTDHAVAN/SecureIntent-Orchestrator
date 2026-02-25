@@ -154,13 +154,13 @@ def get_pending_plans(user_email: str) -> list[dict]:
 
 
 def get_history_plans(user_email: str, limit: int = 20) -> list[dict]:
-    """Return recent executed/rejected plans for the dashboard history view."""
+    """Return recent approved/executed/rejected plans for the dashboard history view."""
     client = get_supabase()
     result = (
         client.table("plans")
         .select("id, goal_type, risk_level, risk_score, status, subject, sender, created_at, reject_reason, execution_log, plan_json")
         .eq("user_email", user_email)
-        .in_("status", ["executed", "rejected", "failed"])
+        .in_("status", ["approved", "executed", "rejected", "failed"])
         .order("created_at", desc=True)
         .limit(limit)
         .execute()

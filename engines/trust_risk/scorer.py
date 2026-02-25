@@ -75,6 +75,38 @@ class RiskScore:
         }
 
 
+_URGENCY_KEYWORDS = {
+    "urgent",
+    "immediately",
+    "asap",
+    "action required",
+}
+
+_CRED_THEFT_KEYWORDS = {
+    "password",
+    "2fa",
+    "otp",
+    "code",
+    "verify",
+    "confirm",
+    "validate",
+    "locked",
+    "suspended",
+}
+
+_FINANCE_FRAUD_KEYWORDS = {
+    "wire",
+    "transfer",
+    "payment",
+    "invoice",
+    "gift card",
+    "bank",
+    "account",
+    "routing",
+    "ssn",
+}
+
+
 # ── Known-safe domains (Google, Microsoft, major providers) ───────────────────
 _TRUSTED_DOMAINS = {
     "gmail.com", "googlemail.com",
@@ -86,9 +118,12 @@ _TRUSTED_DOMAINS = {
 
 # ── Suspicious sender keywords (BEC / impersonation signals) ─────────────────
 _SUSPICIOUS_SENDER_KEYWORDS = {
-    "urgent", "wire", "transfer", "payment", "invoice",
+    "urgent", "immediately", "asap", "action required",
+    "wire", "transfer", "payment", "invoice", "gift card",
     "ceo", "cfo", "boss", "manager", "hr", "finance",
-    "verify", "confirm", "suspended", "locked",
+    "verify", "confirm", "validate", "suspended", "locked",
+    "password", "2fa", "otp", "code",
+    "bank", "account", "routing", "ssn",
 }
 
 
@@ -104,6 +139,7 @@ def calculate_risk(
     url_scan: UrlScanResult,
     sender: str,
     subject: str = "",
+    body: str = "",
 ) -> RiskScore:
     """
     Calculate composite risk score.
@@ -114,7 +150,7 @@ def calculate_risk(
       DMARC fail       → +0.15
       Flagged URL      → +0.30 each (capped at +0.60)
       Unknown domain   → +0.10
-      Suspicious kw    → +0.05 each (capped at +0.15)
+      Suspicious kw    → +0.05 each (capped at +0.25)
     """
     score = 0.0
     reasons: list[str] = []
@@ -152,13 +188,23 @@ def calculate_risk(
         score += 0.10
         reasons.append(f"Sender domain '{domain}' is not in trusted list")
 
-    # ── Suspicious keyword check (subject + sender display name) ─────────────
-    combined_text = f"{sender} {subject}".lower()
+    # ── Suspicious keyword check (sender + subject + body) ──────────────────
+    # Most social-engineering language shows up in the body, not the subject.
+    combined_text = f"{sender} {subject} {body}".lower()
     keyword_hits = [kw for kw in _SUSPICIOUS_SENDER_KEYWORDS if kw in combined_text]
-    keyword_penalty = min(len(keyword_hits) * 0.05, 0.15)
+    keyword_penalty = min(len(keyword_hits) * 0.05, 0.25)
     if keyword_penalty > 0:
         score += keyword_penalty
-        reasons.append(f"Suspicious keywords in sender/subject: {', '.join(keyword_hits[:3])}")
+        reasons.append(f"Suspicious keywords detected: {', '.join(keyword_hits[:5])}")
+
+    # Escalation: urgency + (credential theft OR finance fraud) is a strong social-engineering signal.
+    hits_set = set(keyword_hits)
+    has_urgency = any(k in hits_set for k in _URGENCY_KEYWORDS)
+    has_cred = any(k in hits_set for k in _CRED_THEFT_KEYWORDS)
+    has_fin = any(k in hits_set for k in _FINANCE_FRAUD_KEYWORDS)
+    if has_urgency and (has_cred or has_fin):
+        score += 0.20
+        reasons.append("Urgency language combined with credential/finance cues (social engineering pattern)")
 
     # ── Clamp and classify ────────────────────────────────────────────────────
     score = min(round(score, 4), 1.0)
