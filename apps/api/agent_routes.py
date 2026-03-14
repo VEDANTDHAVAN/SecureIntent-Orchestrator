@@ -408,6 +408,15 @@ async def execute_plan(
         )
 
         success_count = sum(1 for r in results if r.get("success"))
+
+        # Calendar convenience: surface primary event link/id (if any) to callers
+        calendar_event_link = None
+        calendar_event_id = None
+        for r in results:
+            action_name = (r.get("action") or "").lower()
+            if action_name == "calendar_create_event" and r.get("success"):
+                calendar_event_link = r.get("event_link") or calendar_event_link
+                calendar_event_id = r.get("event_id") or calendar_event_id
         
         # Mapping results to StepResultOut schema
         step_results = []
@@ -458,7 +467,10 @@ async def execute_plan(
                 goal_type=plan_row.get("goal_type", "unknown"),
                 overall_status=final_status,
                 step_results=step_results,
-            )
+            ),
+            # Extra convenience fields for calendar-aware clients (extension)
+            calendar_event_link=calendar_event_link,
+            calendar_event_id=calendar_event_id,
         )
     except Exception as exc:
         logger.error("Execution failed for plan %s: %s", plan_id, exc)
