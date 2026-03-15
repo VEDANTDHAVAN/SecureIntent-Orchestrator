@@ -14,6 +14,7 @@ class IntentType(str, Enum):
     FORWARD_EMAIL = "forward_email"
     FILE_REQUEST = "file_request"
     APPROVAL_REQUEST = "approval_request"
+    TELEGRAM_ALERT = "telegram_alert"
     UNKNOWN = "unknown"
 
 

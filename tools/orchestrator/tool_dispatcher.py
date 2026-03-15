@@ -162,6 +162,15 @@ async def dispatch_step(
         )
         return {**result, "action": action_str}
 
+    # ── Telegram actions ────────────────────────────────────────────────────
+    if action == StepAction.TELEGRAM_SEND_MESSAGE:
+        from tools.telegram_tool.tool import send_message
+        result = await send_message(
+            chat_id=params.get("chat_id", ""),
+            text=params.get("text", description),
+        )
+        return {**result, "action": action_str}
+
     # ── Payment steps (simulation only for MVP) ──────────────────────────────
     if action in (StepAction.PAYMENT_VERIFY, StepAction.PAYMENT_INITIATE, StepAction.INVOICE_REQUEST):
         logger.info("Payment step simulated (no real integration yet): %s", action_str)

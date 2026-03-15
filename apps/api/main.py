@@ -55,6 +55,8 @@ goal_executor = GoalExecutionEngine()
 async def lifespan(app: FastAPI):
     logger.info("Starting SecureIntent Orchestrator v0.2.0")
     connected = ping_db()
+    from db.models import PLAN_CACHE
+    print(f"DEBUG: API Start. PLAN_CACHE ID: {id(PLAN_CACHE)}")
     logger.info("✅ Supabase connected" if connected else "⚠️  Supabase NOT reachable")
     yield
     logger.info("Shutting down")
@@ -243,6 +245,9 @@ async def analyze_email(
 
     # Always cache in-memory so approve/execute can find it regardless of DB state
     _PLAN_CACHE[plan_id] = plan_data
+    from db.models import PLAN_CACHE
+    print(f"DEBUG: Plan {plan_id} cached. Total cache size: {len(PLAN_CACHE)}")
+    print(f"DEBUG: PLAN_CACHE ID: {id(PLAN_CACHE)}")
     logger.info("Plan cached: id=%s (cache size=%d)", plan_id, len(_PLAN_CACHE))
 
     return {

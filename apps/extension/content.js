@@ -298,6 +298,7 @@
             doc_request: "📂 Get Doc", doc_share: "🔗 Share", doc_summarize: "📋 Summarize",
             approval_request: "⏳ Request Approval", approval_send: "✅ Send Approval",
             notify_stakeholder: "🔔 Notify", escalate_manager: "🚨 Escalate",
+            telegram_send_message: "Telegram Message",
             human_review: "👁 Human Review", log_only: "📊 Log",
         };
 

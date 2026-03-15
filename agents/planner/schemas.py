@@ -40,6 +40,7 @@ class GoalType(str, Enum):
     # ── Notifications & alerts ─────────────────────────────────────────────────
     SEND_NOTIFICATION     = "send_notification"
     ESCALATE_TO_MANAGER   = "escalate_to_manager"
+    TELEGRAM_SEND_MESSAGE = "telegram_send_message"
 
     # ── Fallback ──────────────────────────────────────────────────────────────
     RESPOND_WITH_INFORMATION = "respond_with_information"
@@ -86,6 +87,7 @@ class StepAction(str, Enum):
     # Notification
     NOTIFY_STAKEHOLDER    = "notify_stakeholder"
     ESCALATE_MANAGER      = "escalate_manager"
+    TELEGRAM_SEND_MESSAGE = "telegram_send_message"
 
     # Generic
     HUMAN_REVIEW          = "human_review"

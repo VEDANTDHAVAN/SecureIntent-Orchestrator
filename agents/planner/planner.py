@@ -7,6 +7,7 @@ downstream use step.action and step.requires_external_action to decide
 whether to block, gate for approval, or auto-execute.
 """
 
+import os
 from agents.intent_agent.schemas import Intent, IntentType
 from .schemas import GoalPlan, GoalType, ExecutionStep, StepAction
 
@@ -43,6 +44,8 @@ class GoalPlanner:
             # ── Information ───────────────────────────────────────────────────
             IntentType.INFORMATION_QUERY: self._plan_info_query,
             IntentType.FILE_REQUEST:      self._plan_file_request,
+            # ── Notifications ──────────────────────────────────────────────────
+            IntentType.TELEGRAM_ALERT:    self._plan_telegram_alert,
         }
 
         handler = mapper.get(intent.intent_type)
@@ -326,6 +329,28 @@ class GoalPlanner:
                     description="Confirm file was shared via email",
                     requires_human_approval=False, requires_external_action=True,
                 ),
+            ],
+        )
+
+    def _plan_telegram_alert(self, intent: Intent) -> GoalPlan:
+        action_text = intent.action_requested or intent.action_required or "urgent alert"
+        chat_id = intent.entities.organizations[0] if intent.entities.organizations else os.getenv("TELEGRAM_CHAT_ID", "MISSING_CHAT_ID")
+        print(f"DEBUG: [Planner] Using Telegram chat_id: {chat_id}")
+        return GoalPlan(
+            goal_type=GoalType.SEND_NOTIFICATION,
+            priority=4,
+            summary=f"Send Telegram alert: {action_text[:60]}",
+            steps=[
+                ExecutionStep(
+                    step_id=1, action=StepAction.TELEGRAM_SEND_MESSAGE,
+                    description=f"Send Telegram message: {action_text[:80]}",
+                    requires_human_approval=True,
+                    requires_external_action=True,
+                    params={
+                        "chat_id": chat_id,
+                        "text": f"🚨 SecureIntent Alert: {action_text}"
+                    }
+                )
             ],
         )
 
