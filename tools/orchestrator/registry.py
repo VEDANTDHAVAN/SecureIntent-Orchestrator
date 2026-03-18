@@ -32,6 +32,14 @@ def _register_tools() -> None:
     except ImportError as exc:
         logger.warning("Gmail tool not available: %s", exc)
 
+    # Slack notifications (optional)
+    try:
+        from tools.slack_tool.tool import send_notification as send_slack_notification
+        TOOL_REGISTRY["SEND_SLACK_NOTIFICATION"] = send_slack_notification
+        logger.info("Registered Slack tool action: SEND_SLACK_NOTIFICATION")
+    except ImportError as exc:
+        logger.warning("Slack tool not available: %s", exc)
+
     # Stubs for future tools (safe no-ops until implemented)
     TOOL_REGISTRY.setdefault("NO_ACTION", _noop)
     TOOL_REGISTRY.setdefault("SCHEDULE_CALENDAR_EVENT", _stub("calendar"))
