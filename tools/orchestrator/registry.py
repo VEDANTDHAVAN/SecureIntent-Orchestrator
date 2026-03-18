@@ -40,11 +40,20 @@ def _register_tools() -> None:
     except ImportError as exc:
         logger.warning("Slack tool not available: %s", exc)
 
+    # Telegram notifications
+    try:
+        from tools.telegram_tool.tool import send_message as send_telegram_message
+        TOOL_REGISTRY["TELEGRAM_SEND_MESSAGE"] = send_telegram_message
+        logger.info("Registered Telegram tool action: TELEGRAM_SEND_MESSAGE")
+    except ImportError as exc:
+        logger.warning("Telegram tool not available: %s", exc)
+
     # Stubs for future tools (safe no-ops until implemented)
     TOOL_REGISTRY.setdefault("NO_ACTION", _noop)
     TOOL_REGISTRY.setdefault("SCHEDULE_CALENDAR_EVENT", _stub("calendar"))
     TOOL_REGISTRY.setdefault("INITIATE_PAYMENT", _stub("payment"))
     TOOL_REGISTRY.setdefault("SEND_SLACK_NOTIFICATION", _stub("slack"))
+    TOOL_REGISTRY.setdefault("TELEGRAM_SEND_MESSAGE", _stub("telegram"))
 
 
 async def _noop(**kwargs) -> dict:

@@ -14,6 +14,7 @@ The JSON MUST match this exact structure:
     "payment_request",
     "information_query",
     "task_request",
+    "telegram_alert",
     "unknown"
   ],
   "action_requested": string describing clearly what the sender wants,
@@ -37,8 +38,10 @@ Rules:
 5. requires_external_action should be:
    - true if the request requires action outside the email thread
    - false otherwise.
-6. If unsure about classification, use "unknown".
-7. Never hallucinate missing information.
+6. Use "telegram_alert" for requests to send urgent notifications or messages via Telegram.
+7. VERY IMPORTANT: If the email contains a numeric Telegram Chat ID (e.g., 6481747999), you MUST extract it and put it in the "organizations" entity list.
+8. If unsure about classification, use "unknown".
+9. Never hallucinate missing information.
 """
 
 USER_PROMPT_TEMPLATE = """

@@ -197,27 +197,6 @@ async def list_intents(
 
 
 # ──────────────────────────────────────────────
-# 3. Fetch a plan
-# ──────────────────────────────────────────────
-
-@plan_router.get(
-    "/{plan_id}",
-    summary="Fetch a plan by ID",
-)
-async def get_plan(
-    plan_id: str,
-    current_user: UserOut = Depends(get_current_user),
-):
-    """Returns the plan record including its steps and current status."""
-    from db.models import get_supabase
-    client = get_supabase()
-    result = client.table("plans").select("*").eq("id", plan_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Plan not found")
-    return result.data[0]
-
-
-# ──────────────────────────────────────────────
 # 2.5 Dashboard — Pending & History
 # ──────────────────────────────────────────────
 
@@ -259,6 +238,27 @@ async def get_plan_history_endpoint(current_user: UserOut = Depends(get_current_
 
     merged.sort(key=_sort_key, reverse=True)
     return {"plans": merged[:limit]}
+
+
+# ──────────────────────────────────────────────
+# 3. Fetch a plan
+# ──────────────────────────────────────────────
+
+@plan_router.get(
+    "/{plan_id}",
+    summary="Fetch a plan by ID",
+)
+async def get_plan(
+    plan_id: str,
+    current_user: UserOut = Depends(get_current_user),
+):
+    """Returns the plan record including its steps and current status."""
+    from db.models import get_supabase
+    client = get_supabase()
+    result = client.table("plans").select("*").eq("id", plan_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return result.data[0]
 
 
 # ──────────────────────────────────────────────
